@@ -379,6 +379,9 @@ $crop-check: 20px;
   border-radius: 12px;
   white-space: pre-wrap;
   word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .file-chip {

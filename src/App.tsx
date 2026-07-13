@@ -1,5 +1,5 @@
 import { createSignal, onMount, For, Show, type Component } from 'solid-js';
-import { Scissors, Crop, Layers, Film, Sparkles } from 'lucide-solid';
+import { Scissors, Crop, Layers, Film, Sparkles, Copy, Check } from 'lucide-solid';
 import { Step1RemoveBg } from './components/Step1RemoveBg';
 import { StepCrop } from './components/StepCrop';
 import { Step2AddBackdrop } from './components/Step2AddBackdrop';
@@ -23,6 +23,13 @@ const App: Component = () => {
   const [carried, setCarried] = createSignal<{ path: string; dataUrl: string } | null>(null);
   const [log, setLog] = createSignal<string[]>([]);
   let logEl: HTMLDivElement | undefined;
+
+  const [copied, setCopied] = createSignal(false);
+  const copyLog = async () => {
+    await navigator.clipboard.writeText(log().join('\n'));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const addLog = (msg: string) => {
     const stamped = msg.endsWith('\n') ? msg.slice(0, -1) : msg;
@@ -108,7 +115,14 @@ const App: Component = () => {
       </div>
 
       <div class="glass-card p-3 mt-4">
-        <div class="text-muted small mb-2 border-bottom border-secondary border-opacity-25 pb-2">Log</div>
+        <div class="d-flex align-items-center justify-content-between mb-2 border-bottom border-secondary border-opacity-25 pb-2">
+          <span class="text-muted small">Log</span>
+          <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1"
+            disabled={!log().length} onClick={copyLog}>
+            <Show when={copied()} fallback={<Copy size={14} />}><Check size={14} /></Show>
+            {copied() ? 'Copied' : 'Copy'}
+          </button>
+        </div>
         <div ref={(el) => (logEl = el)} class="log-box p-2 overflow-auto custom-scrollbar" style="max-height: 200px;">
           <Show when={log().length} fallback={<span class="text-muted">No activity yet...</span>}>
             <For each={log()}>{(line) => <div class="text-info-emphasis">{line}</div>}</For>
