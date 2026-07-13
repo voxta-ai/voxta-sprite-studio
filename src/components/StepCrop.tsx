@@ -1,5 +1,5 @@
 import { createEffect, createSignal, Show, untrack } from 'solid-js';
-import { Crop, Scissors, RotateCcw, Check, FolderOpen, ArrowRight } from 'lucide-solid';
+import { Crop, Scissors, RotateCcw, Check, FolderOpen, ArrowRight, ImageUp } from 'lucide-solid';
 import { Cropper } from './Cropper';
 import { DropZone } from './DropZone';
 import type { Rect } from '../types';
@@ -39,6 +39,14 @@ export function StepCrop(props: StepCropProps) {
     const res = await window.api.readImage(path);
     if (res.ok) loadFrom(path, res.dataUrl!);
     else setStatus(`Could not open: ${res.error}`);
+  };
+
+  const clearInput = () => {
+    setInputPath(null);
+    setInputUrl(null);
+    setRect(null);
+    setOutputPath(null);
+    setStatus('Drag the edges to crop, or auto-trim to the character.');
   };
 
   const onReady = (w: number, h: number) => {
@@ -142,6 +150,9 @@ export function StepCrop(props: StepCropProps) {
           </button>
           <button class="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={reset}>
             <RotateCcw size={16} /> Reset
+          </button>
+          <button class="btn btn-outline-secondary d-flex align-items-center gap-2" onClick={clearInput}>
+            <ImageUp size={16} /> Change image
           </button>
           <Show when={rect()}>
             <span class="text-muted small ms-1">
