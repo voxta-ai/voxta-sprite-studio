@@ -114,6 +114,18 @@ ipcMain.handle('shell:openFolder', async (_e, filePath) => {
 
 ipcMain.handle('bg:isReady', async () => pythonEnv.ready());
 
+ipcMain.handle('bg:hasGpu', async () => pythonEnv.hasGpu());
+
+ipcMain.handle('bg:setup', async () => {
+    const log = (line) => mainWindow.webContents.send('bg:log', line.endsWith('\n') ? line : line + '\n');
+    try {
+        await pythonEnv.ensureReady(log);
+        return { ok: true };
+    } catch (err) {
+        return { ok: false, error: err.message };
+    }
+});
+
 ipcMain.handle('bg:remove', async (_e, { input, mode, threshold }) => {
     const log = (line) => mainWindow.webContents.send('bg:log', line.endsWith('\n') ? line : line + '\n');
 

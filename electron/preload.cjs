@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('api', {
 
     // step 1: AI background removal
     isBgReady: () => ipcRenderer.invoke('bg:isReady'),
+    hasGpu: () => ipcRenderer.invoke('bg:hasGpu'),
+    setupBg: () => ipcRenderer.invoke('bg:setup'),
     removeBackground: (data) => ipcRenderer.invoke('bg:remove', data),
     onBgLog: (cb) => {
         const handler = (_e, line) => cb(line);

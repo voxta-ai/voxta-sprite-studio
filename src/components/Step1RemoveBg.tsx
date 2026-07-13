@@ -19,8 +19,22 @@ export function Step1RemoveBg(props: Step1Props) {
   const [busy, setBusy] = createSignal(false);
   const [status, setStatus] = createSignal('Select a character image to begin.');
   const [ready, setReady] = createSignal(true);
+  const [settingUp, setSettingUp] = createSignal(false);
+  const [gpu, setGpu] = createSignal(false);
 
-  onMount(async () => setReady(await window.api.isBgReady()));
+  onMount(async () => {
+    setReady(await window.api.isBgReady());
+    setGpu(await window.api.hasGpu());
+  });
+
+  const setupNow = async () => {
+    setSettingUp(true);
+    props.onLog('[BG] Setting up background remover...');
+    const res = await window.api.setupBg();
+    setSettingUp(false);
+    if (res.ok) { setReady(true); props.onLog('[BG] Background remover ready.'); }
+    else props.onLog(`[BG] Setup failed: ${res.error}`);
+  };
 
   const loadInput = async (path: string) => {
     const res = await window.api.readImage(path);
@@ -66,13 +80,19 @@ export function Step1RemoveBg(props: Step1Props) {
       </p>
 
       <Show when={!ready()}>
-        <div class="d-flex align-items-center gap-2 p-2 px-3 mb-4 rounded-3"
+        <div class="d-flex align-items-center gap-3 p-2 ps-3 pe-2 mb-4 rounded-3"
           style="background: rgba(56,177,107,0.10); border: 1px solid rgba(56,177,107,0.25);">
           <Download size={16} class="text-success flex-shrink-0" />
-          <span class="small text-muted">
-            First background removal will set up the remover automatically (one-time, a few minutes).
-            Progress shows in the log below.
+          <span class="small text-muted flex-grow-1">
+            The background remover needs a one-time setup (downloads Python + AI model, a few minutes).
+            {gpu() ? ' Your NVIDIA GPU was detected, so it will install the CUDA build for faster removal.' : ''}
+            {' '}It runs automatically on your first removal, or start it now:
           </span>
+          <button class="btn btn-sm btn-success d-flex align-items-center gap-2 flex-shrink-0"
+            disabled={settingUp()} onClick={setupNow}>
+            <Show when={settingUp()} fallback={<Download size={15} />}><Loader2 size={15} class="spin" /></Show>
+            {settingUp() ? 'Setting up...' : 'Set up now'}
+          </button>
         </div>
       </Show>
 

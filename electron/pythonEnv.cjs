@@ -2,15 +2,21 @@
 // first run. Uses `uv` (a single static binary) to download a standalone CPython
 // and install transparent-background + torch into the app's data folder - nothing
 // touches the user's system Python.
+//
+// If an NVIDIA GPU is detected, the CUDA build of torch is installed so InSPyReNet
+// runs on the GPU; otherwise the CPU build is used. Set SPRITE_STUDIO_FORCE_CPU=1
+// to force CPU.
 
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const extract = require('extract-zip');
 
 const IS_WIN = process.platform === 'win32';
+const CUDA_INDEX = 'https://download.pytorch.org/whl/cu124';
+const PYPI_INDEX = 'https://pypi.org/simple';
 
 const runtimeDir = () => path.join(app.getPath('userData'), 'runtime');
 const uvExe = () => path.join(runtimeDir(), IS_WIN ? 'uv.exe' : 'uv');
@@ -18,8 +24,39 @@ const venvDir = () => path.join(runtimeDir(), 'pyenv');
 const venvPython = () => path.join(venvDir(), IS_WIN ? path.join('Scripts', 'python.exe') : path.join('bin', 'python'));
 const readyMarker = () => path.join(runtimeDir(), '.ready');
 
+let _gpu = null;
+function hasGpu() {
+  if (_gpu === null) {
+    try {
+      const r = spawnSync('nvidia-smi', ['-L'], { windowsHide: true });
+      _gpu = r.status === 0;
+    } catch {
+      _gpu = false;
+    }
+  }
+  return _gpu;
+}
+
+// The torch flavor we want on this machine.
+function desiredFlavor() {
+  if (process.env.SPRITE_STUDIO_FORCE_CPU === '1') return 'cpu';
+  return hasGpu() ? 'gpu' : 'cpu';
+}
+
+function installedFlavor() {
+  try {
+    return fs.readFileSync(readyMarker(), 'utf8').trim();
+  } catch {
+    return null;
+  }
+}
+
 function isReady() {
-  return fs.existsSync(readyMarker()) && fs.existsSync(venvPython());
+  return fs.existsSync(venvPython()) && installedFlavor() === desiredFlavor();
+}
+
+function ready() {
+  return Boolean(process.env.SPRITE_STUDIO_PYTHON) || isReady();
 }
 
 function download(url, dest, onLog) {
@@ -88,7 +125,8 @@ async function ensureUv(onLog) {
 
 let setupPromise = null;
 
-// Ensures the Python env exists, provisioning it on first call. Returns the
+// Ensures the Python env exists with the right torch flavor, provisioning on
+// first call (or re-installing torch if the GPU/CPU choice changed). Returns the
 // path to the env's python executable. Safe to call concurrently.
 async function ensureReady(onLog) {
   const override = process.env.SPRITE_STUDIO_PYTHON;
@@ -96,17 +134,31 @@ async function ensureReady(onLog) {
   if (isReady()) return venvPython();
   if (setupPromise) return setupPromise;
 
+  const flavor = desiredFlavor();
   setupPromise = (async () => {
     onLog('Setting up the background remover (first run only, a few minutes)...');
     await ensureUv(onLog);
-    onLog('Creating an isolated Python environment...');
-    // only-managed forces uv to download its own standalone CPython instead of
-    // relying on whatever Python the user may (or may not) have installed.
-    await run(uvExe(), ['venv', venvDir(), '--python', '3.12', '--python-preference', 'only-managed'], onLog);
-    onLog('Installing transparent-background + torch...');
-    await run(uvExe(), ['pip', 'install', '--python', venvPython(), 'transparent-background'], onLog);
-    fs.writeFileSync(readyMarker(), new Date().toISOString());
-    onLog('Background remover ready.');
+
+    if (!fs.existsSync(venvPython())) {
+      onLog('Creating an isolated Python environment...');
+      await run(uvExe(), ['venv', venvDir(), '--python', '3.12', '--python-preference', 'only-managed'], onLog);
+    }
+
+    if (flavor === 'gpu') {
+      onLog('NVIDIA GPU detected - installing transparent-background with the CUDA build of torch (larger download)...');
+      await run(uvExe(), [
+        'pip', 'install', '--python', venvPython(),
+        'transparent-background', 'torch', 'torchvision',
+        '--index-url', CUDA_INDEX,
+        '--extra-index-url', PYPI_INDEX,
+      ], onLog);
+    } else {
+      onLog('Installing transparent-background + torch (CPU build)...');
+      await run(uvExe(), ['pip', 'install', '--python', venvPython(), 'transparent-background'], onLog);
+    }
+
+    fs.writeFileSync(readyMarker(), flavor);
+    onLog(`Background remover ready (${flavor.toUpperCase()}).`);
     return venvPython();
   })();
 
@@ -117,8 +169,4 @@ async function ensureReady(onLog) {
   }
 }
 
-function ready() {
-  return Boolean(process.env.SPRITE_STUDIO_PYTHON) || isReady();
-}
-
-module.exports = { ready, ensureReady };
+module.exports = { ready, ensureReady, hasGpu };
