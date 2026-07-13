@@ -13,21 +13,30 @@ The workflow (image generation and video generation happen elsewhere):
 
 Each step's output carries into the next.
 
-## Requirements
+## Requirements (end users)
 
-- **Node.js** (for the app itself)
-- **Python** on PATH with `transparent-background` installed - Step 1 only
-  ```bash
-  pip install transparent-background
-  ```
-  If your Python isn't `python` on PATH, set `SPRITE_STUDIO_PYTHON` to its full path.
-- **ffmpeg** on PATH - Step 3 only
+Nothing to install - the app is self-contained:
+
+- **ffmpeg** is bundled (static binary).
+- **Background removal** provisions its own isolated Python environment on first
+  use. On the first background removal, the app downloads `uv`, a standalone
+  CPython, and `transparent-background` (InSPyReNet) into its data folder
+  (`%APPDATA%/Voxta Sprite Studio/runtime`). This is a one-time, few-minute setup
+  and needs an internet connection. Nothing touches the system Python.
 
 ## Run (development)
 
 ```bash
 npm install
 npm run electron:dev   # starts Vite + Electron together
+```
+
+To skip the first-run Python provisioning during development and reuse an existing
+Python that already has `transparent-background` installed, set:
+
+```bash
+# PowerShell
+$env:SPRITE_STUDIO_PYTHON = "C:\path\to\python.exe"
 ```
 
 ## Build a portable .exe

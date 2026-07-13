@@ -48,6 +48,7 @@ export interface SpriteApi {
   readImage: (path: string) => Promise<ReadImageResult>;
   openFolder: (path: string) => Promise<void>;
   getPathForFile: (file: File) => string;
+  isBgReady: () => Promise<boolean>;
   removeBackground: (data: { input: string; mode: 'base' | 'fast'; threshold: number }) => Promise<RemoveBgResult>;
   onBgLog: (cb: (line: string) => void) => () => void;
   saveCrop: (data: { input: string; base64: string }) => Promise<SaveBackdropResult>;

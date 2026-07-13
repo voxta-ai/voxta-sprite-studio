@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('api', {
     getPathForFile: (file) => webUtils.getPathForFile(file),
 
     // step 1: AI background removal
+    isBgReady: () => ipcRenderer.invoke('bg:isReady'),
     removeBackground: (data) => ipcRenderer.invoke('bg:remove', data),
     onBgLog: (cb) => {
         const handler = (_e, line) => cb(line);

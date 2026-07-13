@@ -2,6 +2,10 @@ const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
+const pythonEnv = require('./pythonEnv.cjs');
+
+// Bundled static ffmpeg (unpacked from asar in the packaged app).
+const ffmpegPath = require('ffmpeg-static').replace('app.asar', 'app.asar.unpacked');
 
 let mainWindow;
 
@@ -39,8 +43,6 @@ app.on('window-all-closed', () => {
 });
 
 // --- helpers -----------------------------------------------------------------
-
-const PYTHON = process.env.SPRITE_STUDIO_PYTHON || 'python';
 
 const MIME = {
     '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
@@ -110,9 +112,20 @@ ipcMain.handle('shell:openFolder', async (_e, filePath) => {
 
 // --- Step 1: AI background removal (InSPyReNet via transparent-background) ----
 
+ipcMain.handle('bg:isReady', async () => pythonEnv.ready());
+
 ipcMain.handle('bg:remove', async (_e, { input, mode, threshold }) => {
+    const log = (line) => mainWindow.webContents.send('bg:log', line.endsWith('\n') ? line : line + '\n');
+
+    let python;
+    try {
+        python = await pythonEnv.ensureReady(log);
+    } catch (err) {
+        return { ok: false, error: `Background remover setup failed: ${err.message}` };
+    }
+
     const output = withSuffix(input, '_nobg', '.png');
-    const script = path.join(__dirname, '..', 'python', 'remove_bg.py');
+    const script = path.join(__dirname, '..', 'python', 'remove_bg.py').replace('app.asar', 'app.asar.unpacked');
     const args = [
         script,
         '--input', input,
@@ -122,7 +135,7 @@ ipcMain.handle('bg:remove', async (_e, { input, mode, threshold }) => {
     if (threshold && threshold > 0) args.push('--threshold', String(threshold));
 
     return new Promise((resolve) => {
-        const proc = spawn(PYTHON, args, { windowsHide: true });
+        const proc = spawn(python, args, { windowsHide: true });
         let stdout = '';
         proc.stdout.on('data', (d) => { stdout += d.toString(); });
         proc.stderr.on('data', (d) => {
@@ -198,7 +211,7 @@ function convertOne(input, opts) {
     mainWindow.webContents.send('video:log', `> ffmpeg ${args.join(' ')}\n`);
 
     return new Promise((resolve) => {
-        const proc = spawn('ffmpeg', args, { windowsHide: true });
+        const proc = spawn(ffmpegPath, args, { windowsHide: true });
         proc.stderr.on('data', (d) => mainWindow.webContents.send('video:log', d.toString()));
         proc.on('error', (err) => {
             mainWindow.webContents.send('video:log', `FATAL: ${err.message}\n`);

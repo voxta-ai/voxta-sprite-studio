@@ -1,5 +1,5 @@
-import { createSignal, Show } from 'solid-js';
-import { Wand2, FolderOpen, ArrowRight, Loader2, ImageUp, Sparkles } from 'lucide-solid';
+import { createSignal, onMount, Show } from 'solid-js';
+import { Wand2, FolderOpen, ArrowRight, Loader2, ImageUp, Sparkles, Download } from 'lucide-solid';
 import { DropZone } from './DropZone';
 import { Segmented } from './Segmented';
 
@@ -18,6 +18,9 @@ export function Step1RemoveBg(props: Step1Props) {
   const [edge, setEdge] = createSignal<'soft' | 'hard'>('soft');
   const [busy, setBusy] = createSignal(false);
   const [status, setStatus] = createSignal('Select a character image to begin.');
+  const [ready, setReady] = createSignal(true);
+
+  onMount(async () => setReady(await window.api.isBgReady()));
 
   const loadInput = async (path: string) => {
     const res = await window.api.readImage(path);
@@ -61,6 +64,17 @@ export function Step1RemoveBg(props: Step1Props) {
         Bring your own character image. The AI cuts out the background and gives you a clean
         transparent PNG.
       </p>
+
+      <Show when={!ready()}>
+        <div class="d-flex align-items-center gap-2 p-2 px-3 mb-4 rounded-3"
+          style="background: rgba(56,177,107,0.10); border: 1px solid rgba(56,177,107,0.25);">
+          <Download size={16} class="text-success flex-shrink-0" />
+          <span class="small text-muted">
+            First background removal will set up the remover automatically (one-time, a few minutes).
+            Progress shows in the log below.
+          </span>
+        </div>
+      </Show>
 
       <div class="row g-4">
         <div class="col-md-6">
