@@ -217,7 +217,10 @@ function convertOne(input, opts) {
     // 4:2:0 chroma subsampling would otherwise leave behind.
     if (opts.despill) chain += ', despill=type=green:mix=0.5:expand=0.3';
 
-    const args = ['-i', input, '-vf', chain, '-c:v', cfg.codec, '-pix_fmt', cfg.pixFmt,
+    // -loglevel error drops the banner + swscaler warnings; -stats keeps the
+    // progress lines and real errors still show.
+    const args = ['-hide_banner', '-loglevel', 'error', '-stats',
+        '-i', input, '-vf', chain, '-c:v', cfg.codec, '-pix_fmt', cfg.pixFmt,
         '-an', ...cfg.extra, '-y', output];
 
     mainWindow.webContents.send('video:log', `> ffmpeg ${args.join(' ')}\n`);
