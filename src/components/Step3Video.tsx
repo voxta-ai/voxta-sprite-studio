@@ -19,6 +19,9 @@ export function Step3Video() {
   const [similarity, setSimilarity] = createSignal('0.12');
   const [blend, setBlend] = createSignal('0.15');
   const [despill, setDespill] = createSignal(true);
+  const [despillStrength, setDespillStrength] = createSignal(0.35);
+  const [smoothEdges, setSmoothEdges] = createSignal(true);
+  const [edgeSoftness, setEdgeSoftness] = createSignal(0.6);
   const [format, setFormat] = createSignal<VideoOptions['format']>('webm');
   const [busy, setBusy] = createSignal(false);
   const [dragActive, setDragActive] = createSignal(false);
@@ -58,7 +61,9 @@ export function Step3Video() {
       files: files(),
       options: {
         mode: mode(), color: color(), similarity: similarity(),
-        blend: blend(), despill: despill(), format: format(),
+        blend: blend(), despill: despill(), despillStrength: despillStrength(),
+        smoothEdges: smoothEdges(), edgeSoftness: edgeSoftness(),
+        format: format(),
       },
     });
     setBusy(false);
@@ -137,6 +142,36 @@ export function Step3Video() {
                 onChange={(e) => setDespill(e.currentTarget.checked)} />
               <label class="form-check-label small" for="despill">Remove green spill (halo)</label>
             </div>
+            <Show when={despill()}>
+              <div class="mt-2">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Spill strength</span>
+                  <span>{despillStrength().toFixed(2)}</span>
+                </div>
+                <input type="range" class="form-range" min="0.1" max="0.6" step="0.05"
+                  value={despillStrength()}
+                  onInput={(e) => setDespillStrength(parseFloat(e.currentTarget.value))} />
+                <div class="small text-muted" style="opacity:0.7">Lower this if the result looks pink/magenta; raise it if green edges remain.</div>
+              </div>
+            </Show>
+
+            <div class="form-check form-switch mt-3">
+              <input class="form-check-input" type="checkbox" id="smooth" checked={smoothEdges()}
+                onChange={(e) => setSmoothEdges(e.currentTarget.checked)} />
+              <label class="form-check-label small" for="smooth">Smooth edges (anti-alias)</label>
+            </div>
+            <Show when={smoothEdges()}>
+              <div class="mt-2">
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Edge softness</span>
+                  <span>{edgeSoftness().toFixed(1)}</span>
+                </div>
+                <input type="range" class="form-range" min="0.5" max="2.5" step="0.1"
+                  value={edgeSoftness()}
+                  onInput={(e) => setEdgeSoftness(parseFloat(e.currentTarget.value))} />
+                <div class="small text-muted" style="opacity:0.7">Removes the jagged white/black edge fringe. Raise for softer edges, lower to keep them crisp.</div>
+              </div>
+            </Show>
 
             <div class="mt-3">
               <label class="form-label small text-muted mb-1">Output format</label>

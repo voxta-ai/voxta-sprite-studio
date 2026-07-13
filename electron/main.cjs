@@ -213,9 +213,19 @@ function convertOne(input, opts) {
     const color = opts.color.replace('#', '0x');
     const key = opts.mode === 'green' ? 'chromakey' : 'colorkey';
     let chain = `${key}=color=${color}:similarity=${opts.similarity}:blend=${opts.blend}`;
-    // Stronger despill (mix + expand) pulls the green fringe off soft edges that
-    // 4:2:0 chroma subsampling would otherwise leave behind.
-    if (opts.despill) chain += ', despill=type=green:mix=0.5:expand=0.3';
+    // Despill removes the green fringe. Keep `expand` at 0 - expanding it pulls
+    // green out of the whole subject (skin/fabric) and leaves a pink/magenta cast.
+    // `mix` (strength) is user-tunable.
+    if (opts.despill) {
+        const mix = typeof opts.despillStrength === 'number' ? opts.despillStrength : 0.35;
+        chain += `, despill=type=green:mix=${mix}`;
+    }
+    // Anti-alias the matte: erode the alpha ~1px to cut the light/dark edge fringe,
+    // then feather it so the cutout edge is smooth instead of jagged.
+    if (opts.smoothEdges) {
+        const sigma = typeof opts.edgeSoftness === 'number' ? opts.edgeSoftness : 0.6;
+        chain += `,format=yuva420p,split[m][a];[a]alphaextract,erosion,gblur=sigma=${sigma}[al];[m][al]alphamerge`;
+    }
 
     // -loglevel error drops the banner + swscaler warnings; -stats keeps the
     // progress lines and real errors still show.

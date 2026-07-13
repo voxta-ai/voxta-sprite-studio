@@ -38,6 +38,9 @@ export interface VideoOptions {
   similarity: string;
   blend: string;
   despill: boolean;
+  despillStrength: number;
+  smoothEdges: boolean;
+  edgeSoftness: number;
   format: 'webm' | 'webm-lossless' | 'prores' | 'mp4';
 }
 
