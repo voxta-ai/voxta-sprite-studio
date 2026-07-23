@@ -208,6 +208,17 @@ const VIDEO_FORMATS = {
 };
 
 function convertOne(input, opts) {
+    // Raw convert: a plain transcode to WebM with no keying/despill filters.
+    // Alpha is preserved when the source has it (yuva420p), otherwise opaque.
+    if (opts.raw) {
+        const cfg = VIDEO_FORMATS['webm'];
+        const output = withSuffix(input, '', cfg.ext);
+        const args = ['-hide_banner', '-loglevel', 'error', '-stats',
+            '-i', input, '-c:v', cfg.codec, '-pix_fmt', cfg.pixFmt,
+            '-an', ...cfg.extra, '-y', output];
+        return runFfmpeg(input, output, args);
+    }
+
     const cfg = VIDEO_FORMATS[opts.format] || VIDEO_FORMATS['webm'];
     const output = withSuffix(input, '', cfg.ext);
     const color = opts.color.replace('#', '0x');
@@ -233,6 +244,10 @@ function convertOne(input, opts) {
         '-i', input, '-vf', chain, '-c:v', cfg.codec, '-pix_fmt', cfg.pixFmt,
         '-an', ...cfg.extra, '-y', output];
 
+    return runFfmpeg(input, output, args);
+}
+
+function runFfmpeg(input, output, args) {
     mainWindow.webContents.send('video:log', `> ffmpeg ${args.join(' ')}\n`);
 
     return new Promise((resolve) => {

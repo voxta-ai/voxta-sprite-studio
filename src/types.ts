@@ -33,6 +33,7 @@ export interface VideoConvertResult {
 }
 
 export interface VideoOptions {
+  raw: boolean;
   mode: 'green' | 'black';
   color: string;
   similarity: string;

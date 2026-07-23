@@ -1,5 +1,5 @@
 import { createSignal, For, Show } from 'solid-js';
-import { Film, FolderPlus, Loader2, Play } from 'lucide-solid';
+import { Film, FolderPlus, FolderOpen, Loader2, Play } from 'lucide-solid';
 import { Segmented } from './Segmented';
 import { FileList } from './FileList';
 import { mergeFiles } from '../utils/files';
@@ -14,6 +14,7 @@ const FORMATS: { value: VideoOptions['format']; label: string; alpha: boolean }[
 
 export function Step3Video() {
   const [files, setFiles] = createSignal<string[]>([]);
+  const [raw, setRaw] = createSignal(false);
   const [mode, setMode] = createSignal<'green' | 'black'>('green');
   const [color, setColor] = createSignal('#00de00');
   const [similarity, setSimilarity] = createSignal('0.12');
@@ -23,6 +24,7 @@ export function Step3Video() {
   const [smoothEdges, setSmoothEdges] = createSignal(true);
   const [edgeSoftness, setEdgeSoftness] = createSignal(0.6);
   const [format, setFormat] = createSignal<VideoOptions['format']>('webm');
+  const [outputPath, setOutputPath] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [dragActive, setDragActive] = createSignal(false);
 
@@ -57,23 +59,30 @@ export function Step3Video() {
   const convert = async () => {
     if (!files().length) return;
     setBusy(true);
-    await window.api.convertVideos({
+    const results = await window.api.convertVideos({
       files: files(),
       options: {
+        raw: raw(),
         mode: mode(), color: color(), similarity: similarity(),
         blend: blend(), despill: despill(), despillStrength: despillStrength(),
         smoothEdges: smoothEdges(), edgeSoftness: edgeSoftness(),
-        format: format(),
+        format: raw() ? 'webm' : format(),
       },
     });
+    const done = results.find((r) => r.ok && r.output);
+    if (done?.output) setOutputPath(done.output);
     setBusy(false);
   };
 
   return (
     <div>
       <p class="text-muted small mb-4">
-        Drop the green/black video back from your generator. This keys out the backdrop and saves
-        a transparent WebM ready for Voxta's stage.
+        <Show
+          when={raw()}
+          fallback="Drop the green/black video back from your generator. This keys out the backdrop and saves a transparent WebM ready for Voxta's stage."
+        >
+          Just transcoding to WebM &mdash; no keying, no processing. Drop any video to quickly convert it.
+        </Show>
       </p>
 
       <div class="row g-4">
@@ -112,7 +121,17 @@ export function Step3Video() {
         {/* settings */}
         <div class="col-md-5">
           <div class="glass-card p-3">
-            <div class="small text-muted mb-1">Backdrop to remove</div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="raw" checked={raw()}
+                onChange={(e) => setRaw(e.currentTarget.checked)} />
+              <label class="form-check-label small" for="raw">Raw convert (no keying)</label>
+            </div>
+            <div class="small text-muted mt-1" style="opacity:0.7">
+              Just transcode to WebM with no background removal. Keeps transparency if the source already has it.
+            </div>
+
+            <Show when={!raw()}>
+            <div class="small text-muted mb-1 mt-3">Backdrop to remove</div>
             <Segmented
               value={mode()}
               onChange={applyMode}
@@ -183,6 +202,7 @@ export function Step3Video() {
                 <div class="small text-warning mt-2">This format has no transparency. Removed areas become black.</div>
               </Show>
             </div>
+            </Show>
           </div>
         </div>
       </div>
@@ -193,8 +213,16 @@ export function Step3Video() {
         {busy() ? 'Converting...' : 'Convert to WebM'}
       </button>
 
-      <div class="text-muted small mt-3 d-flex align-items-center gap-2">
-        <Play size={14} /> Output lands in a sprite-studio-output folder next to each source video. Watch the log below for progress.
+      <div class="d-flex align-items-center justify-content-between mt-3 gap-2">
+        <span class="text-muted small d-flex align-items-center gap-2">
+          <Play size={14} /> Output lands in a sprite-studio-output folder next to each source video.
+        </span>
+        <Show when={outputPath()}>
+          <button class="btn btn-sm btn-outline-success d-flex align-items-center gap-1 flex-shrink-0"
+            onClick={() => window.api.openFolder(outputPath()!)}>
+            <FolderOpen size={15} /> Open result folder
+          </button>
+        </Show>
       </div>
     </div>
   );
