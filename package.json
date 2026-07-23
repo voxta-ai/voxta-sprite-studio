@@ -41,8 +41,9 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
     }
   },
   "dependencies": {
