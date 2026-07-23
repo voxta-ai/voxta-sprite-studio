@@ -1,7 +1,7 @@
 {
   "name": "voxta-sprite-studio",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Turn a character image into a transparent WebM ready for Voxta's stage",
   "author": "Voxta Scientist",
   "type": "module",
